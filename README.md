@@ -1,4 +1,4 @@
-# Load every shortcode by AJAX
+# Load every WordPress shortcode by AJAX
 Wrap your shortcode with the lazy element shortcode, and your shortcode will automatically be loaded by AJAX.
 
 ## Usage
