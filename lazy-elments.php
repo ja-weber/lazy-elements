@@ -3,10 +3,12 @@
 /*
   Plugin Name: Lazy Elements
   Description: Ajax support for each Shortcode
-  Version: 1.0
-  Author: Janosch    
-  License: Own  
+  Version: 1.1
+  Author: Weber Informatics LLC - Janosch Weber
+  License: Proprietary
  */
+
+define("CACHE_ENABLED", true);
 
 add_shortcode("lazy_element", function ($args, $content) {
     $get_params = apply_filters('ajax_params_before_load', $_GET);
@@ -24,6 +26,10 @@ add_shortcode("lazy_element", function ($args, $content) {
         }
     }
 
+    if (CACHE_ENABLED && file_exists(get_cache_file_path($cache_key, true))) {
+        return file_get_contents(get_cache_file_path($cache_key, true));
+    }
+
     if (!file_put_contents($cache_file_path, $content)) {
         return "It was not possible to create the cache file in the folder '/wp-content/lazy-elements'. Has the webserver enough permisions?";
     }
@@ -33,7 +39,7 @@ add_shortcode("lazy_element", function ($args, $content) {
 });
 
 
-function lazy_wrapper_func()
+function lazy_elements_ajax_func()
 {
     if (!isset($_POST["cacheKey"]) || empty($_POST["cacheKey"])) {
         wp_send_json_error("No cacheKey");
@@ -41,6 +47,12 @@ function lazy_wrapper_func()
     }
 
     $cache_key = $_POST["cacheKey"];
+    if (CACHE_ENABLED && file_exists(get_cache_file_path($cache_key, true))) {
+        //Is used if you have a nested already processed shortcode which is watching.
+        wp_send_json_success(file_get_contents(get_cache_file_path($cache_key, true)));
+        return;
+    }
+
     unset($_POST["cacheKey"]);
     unset($_POST["action"]);
     $queryString = "";
@@ -58,6 +70,11 @@ function lazy_wrapper_func()
 
     $processed_content = do_shortcode($content);
     unlink(get_cache_file_path($cache_key));
+
+    if (CACHE_ENABLED && !empty($processed_content)) {
+        file_put_contents(get_cache_file_path($cache_key, true), $processed_content);
+    }
+
     wp_send_json_success($processed_content);
 }
 
@@ -80,9 +97,28 @@ function generate_cache_key($request_params, $content, $args)
     return md5($cache_key . $content . serialize($args));
 }
 
-add_action('wp_ajax_lazy_element_action', "lazy_wrapper_func");
-add_action('wp_ajax_nopriv_lazy_element_action', "lazy_wrapper_func");
+add_action('wp_ajax_lazy_element_action', "lazy_elements_ajax_func");
+add_action('wp_ajax_nopriv_lazy_element_action', "lazy_elements_ajax_func");
 
 add_action("wp_enqueue_scripts", function () {
     wp_enqueue_script('lazy-elements', plugin_dir_url(__FILE__) . '/js/lazy-elements.js', array('jquery', 'wp-util'));
 });
+
+function delete_lazy_elements()
+{
+    $dir = ABSPATH . "wp-content/lazy-elements";
+    if (file_exists($dir)) {
+        $di = new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS);
+        $ri = new RecursiveIteratorIterator($di, RecursiveIteratorIterator::CHILD_FIRST);
+        foreach ($ri as $file) {
+            $file->isDir() ? rmdir($file) : unlink($file);
+        }
+    }
+}
+
+add_action('delete_lazy_elements_cron', 'delete_lazy_elements');
+if (CACHE_ENABLED) {
+    if (!wp_next_scheduled('delete_lazy_elements_cron')) {
+        wp_schedule_event(time(), 'daily', 'delete_lazy_elements_cron');
+    }
+}
