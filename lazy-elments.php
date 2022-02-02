@@ -11,41 +11,38 @@
 define("CACHE_ENABLED", true);
 
 add_shortcode("lazy_element", function ($args, $content) {
-    $get_params = apply_filters('ajax_params_before_load', $_GET);
-    $only_if_visible = !isset($args["only_if_visible"]) ? false : filter_var($args["only_if_visible"], FILTER_VALIDATE_BOOLEAN);
+    $get_params = apply_filters('le_ajax_params_before_load', $_GET);
 
-    $lazy_wrapper_content_id = "content_" . rand(0, PHP_INT_MAX);
-    $get_params["cacheKey"] = $cache_key = generate_cache_key($get_params, $content, $args);
-    $ajax_params = apply_filters('ajax_params_before_load', $get_params);
-    $ajax_params = json_encode($ajax_params);
+    $cache_key = null;
+    if (CACHE_ENABLED) {
+        $cache_key = generate_cache_key($get_params, $content, $args);
+        $cache_file_path = get_cache_file_path($cache_key);
+        if (!file_exists(dirname($cache_file_path))) {
+            if (!mkdir(dirname($cache_file_path))) {
+                return "It was not possible to create the directory '/wp-content/lazy-elements'. Do you have enough permissions? You can also create it manually.";
+            }
+        }
 
-    $cache_file_path = get_cache_file_path($cache_key);
-    if (!file_exists(dirname($cache_file_path))) {
-        if (!mkdir(dirname($cache_file_path))) {
-            return "It was not possible to create the directory '/wp-content/lazy-elements'. Do you have enough permissions? You can also create it manually.";
+        if (file_exists(get_cache_file_path($cache_key, true))) {
+            return file_get_contents(get_cache_file_path($cache_key, true));
         }
     }
 
-    if (CACHE_ENABLED && file_exists(get_cache_file_path($cache_key, true))) {
-        return file_get_contents(get_cache_file_path($cache_key, true));
-    }
+    $lazy_wrapper_content_id = "content_" . rand(0, PHP_INT_MAX);
+    $get_params["cacheKey"] = $cache_key;
+    $get_params["content"] = base64_encode($content);
+    $get_params["contentKey"] = hash("sha256", $content . NONCE_SALT);
+    $get_params = json_encode($get_params);
 
-    if (!file_put_contents($cache_file_path, $content)) {
-        return "It was not possible to create the cache file in the folder '/wp-content/lazy-elements'. Has the webserver enough permisions?";
-    }
     $html = "<div id='ajax-placeholder-" . $lazy_wrapper_content_id . "' ><img alt='Loading indicator' src='" . plugin_dir_url(__FILE__) . "/images/loader.gif'></div>";
-    $html .= "<script>jQuery(document).ready(function () {lazyElements.startWatching('" . $lazy_wrapper_content_id . "', " . $ajax_params . ", " . $only_if_visible . ")})</script>";
+    $only_if_visible = !isset($args["only_if_visible"]) ? false : filter_var($args["only_if_visible"], FILTER_VALIDATE_BOOLEAN);
+    $html .= "<script>jQuery(document).ready(function () {lazyElements.startWatching('" . $lazy_wrapper_content_id . "', " . $get_params . ", " . $only_if_visible . ")})</script>";
     return $html;
 });
 
 
 function lazy_elements_ajax_func()
 {
-    if (!isset($_POST["cacheKey"]) || empty($_POST["cacheKey"])) {
-        wp_send_json_error("No cacheKey");
-        return;
-    }
-
     $cache_key = $_POST["cacheKey"];
     if (CACHE_ENABLED && file_exists(get_cache_file_path($cache_key, true))) {
         //Is used if you have a nested already processed shortcode which is watching.
@@ -55,6 +52,7 @@ function lazy_elements_ajax_func()
 
     unset($_POST["cacheKey"]);
     unset($_POST["action"]);
+
     $queryString = "";
     foreach ($_POST as $key => $value) {
         $_GET[$key] = $value;
@@ -62,15 +60,13 @@ function lazy_elements_ajax_func()
     }
 
     $_SERVER['QUERY_STRING'] = $queryString;
-    $content = file_get_contents(get_cache_file_path($cache_key));
-    if (!$content || empty($content)) {
+    $content = base64_decode($_POST["content"]);
+    if (!$content || empty($content) || $_GET["contentKey"] !== hash("sha256", $content . NONCE_SALT)) {
         wp_send_json_error("No content.");
         return;
     }
 
     $processed_content = do_shortcode($content);
-    unlink(get_cache_file_path($cache_key));
-
     if (CACHE_ENABLED && !empty($processed_content)) {
         file_put_contents(get_cache_file_path($cache_key, true), $processed_content);
     }
@@ -94,7 +90,7 @@ function generate_cache_key($request_params, $content, $args)
         $cache_key .= $key . serialize($param);
         $cache_key = md5($cache_key);
     }
-    return md5($cache_key . $content . serialize($args));
+    return md5($cache_key . $content . serialize($args) . NONCE_SALT);
 }
 
 add_action('wp_ajax_lazy_element_action', "lazy_elements_ajax_func");

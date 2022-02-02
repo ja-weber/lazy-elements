@@ -13,4 +13,5 @@ Wrap your shortcode with the lazy element shortcode, and your shortcode will aut
 - Ajax calls are getting cached after the first call.
 - Works for every shortcode.
 - No technical knowledge necessary >> Ajax out of the box!
+- Load the shortcode only if it is visible.
 
