@@ -8,7 +8,7 @@
   License: Proprietary
  */
 
-define("CACHE_ENABLED", true);
+define("CACHE_ENABLED", !WP_DEBUG);
 
 add_shortcode("lazy_element", function ($args, $content) {
     $get_params = apply_filters('le_ajax_params_before_load', $_GET);
