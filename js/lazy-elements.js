@@ -1,8 +1,8 @@
 var lazyElements = {
     loadedElements: [],
     isVisible: function (elm) {
-        var vpH = $(window).height(), // Viewport Height.
-            st = $(window).scrollTop(), // Scroll Top
+        var vpH = $(window).height(),
+            st = $(window).scrollTop(),
             y = $(elm).offset().top,
             elementHeight = $(elm).height();
         return ((y < (vpH + st)) && (y > (st - elementHeight)));
