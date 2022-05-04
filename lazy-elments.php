@@ -55,8 +55,14 @@ function lazy_elements_ajax_func()
 
     $queryString = "";
     foreach ($_POST as $key => $value) {
+        if (is_array($value)) {
+            foreach ($value as $arrayValue) {
+                $queryString .= $key . "=" . $arrayValue . "&";
+            }
+        } else {
+            $queryString .= $key . "=" . $value . "&";
+        }
         $_GET[$key] = $value;
-        $queryString .= $key . "=" . $value . "&";
     }
 
     $_SERVER['QUERY_STRING'] = $queryString;
