@@ -37,10 +37,13 @@ var lazyElements = {
         }
         placeholder.addClass("loaded");
 
-        wp.ajax.post('lazy_element_action', ajaxParams).done(function (repsonse) {
-            placeholder.html(repsonse);
-        }).fail(function (repsonse) {
-            console.error(repsonse, 'Error in the ajax wrapper.')
+        wp.ajax.post('lazy_element_action', ajaxParams).done(function (response) {
+            placeholder.html(response);
+        }).fail(function (response) {
+            if(response && response.responseJSON && response.responseJSON.data){
+                placeholder.html(response.responseJSON.data);
+            }
+            console.error(response, 'Error in the ajax wrapper.')
         })
     }
 }

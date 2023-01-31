@@ -73,7 +73,7 @@ function lazy_elements_ajax_func()
     }
 
     $processed_content = do_shortcode($content);
-    if (CACHE_ENABLED && !empty($processed_content)) {
+    if (CACHE_ENABLED && !empty($processed_content) && http_response_code() >= 200 && http_response_code() < 300) {
         file_put_contents(get_cache_file_path($cache_key, true), $processed_content);
     }
 
