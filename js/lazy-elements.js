@@ -12,8 +12,7 @@ var lazyElements = {
             lazyElements.loadElement(contentId, ajaxParams);
         }
 
-        jQuery(document).scroll(function () {
-
+        window.onscroll = function() {
             if (!onlyIfVisible) {
                 //should be loaded already.
                 return;
@@ -28,7 +27,7 @@ var lazyElements = {
             }
 
             lazyElements.loadElement(contentId, ajaxParams);
-        });
+        };
     },
     loadElement: function (contentId, ajaxParams) {
         let placeholder = jQuery('#ajax-placeholder-' + contentId);
