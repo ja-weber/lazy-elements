@@ -12,22 +12,23 @@ var lazyElements = {
             lazyElements.loadElement(contentId, ajaxParams);
         }
 
-        window.onscroll = function() {
+        jQuery(document).scroll(function () {
+
             if (!onlyIfVisible) {
                 //should be loaded already.
                 return;
             }
 
             let placeholder = jQuery("#ajax-placeholder-" + contentId);
-            if(placeholder.length === 0){
-                return ;
+            if (placeholder.length === 0) {
+                return;
             }
             if (!lazyElements.isVisible(placeholder)) {
                 return;
             }
 
             lazyElements.loadElement(contentId, ajaxParams);
-        };
+        });
     },
     loadElement: function (contentId, ajaxParams) {
         let placeholder = jQuery('#ajax-placeholder-' + contentId);
