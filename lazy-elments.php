@@ -14,7 +14,7 @@ add_shortcode("lazy_element", function ($args, $content) {
     $get_params = apply_filters('le_ajax_params_before_load', $_GET);
 
     $cache_key = null;
-    if (CACHE_ENABLED) {
+	if ( CACHE_ENABLED && ! isset( $args["cache_enabled"] ) || isset( $args["cache_enabled"] ) && ! filter_var( $args["cache_enabled"], FILTER_VALIDATE_BOOLEAN ) ) {
         $cache_key = generate_cache_key($get_params, $content, $args);
         $cache_file_path = get_cache_file_path($cache_key);
         if (!file_exists(dirname($cache_file_path))) {
